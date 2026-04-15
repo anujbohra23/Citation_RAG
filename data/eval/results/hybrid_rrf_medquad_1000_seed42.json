@@ -1,0 +1,21 @@
+{
+  "model": "hybrid_rrf",
+  "dataset": "MedQuAD",
+  "eval_split": "queries_1000_seed42",
+  "num_queries": 1000,
+  "bm25_first_stage_k": 50,
+  "dense_first_stage_k": 50,
+  "rrf_k": 60,
+  "final_top_k": 10,
+  "metrics": {
+    "Recall@1": 0.2996874665675325,
+    "Recall@3": 0.5086390388813681,
+    "Recall@5": 0.5866047259187608,
+    "Recall@10": 0.6729777926962869,
+    "MRR": 0.5786216492129352,
+    "NDCG@1": 0.4284232365145228,
+    "NDCG@3": 0.49075846153825825,
+    "NDCG@5": 0.5167330024913313,
+    "NDCG@10": 0.5388277579705738
+  }
+}

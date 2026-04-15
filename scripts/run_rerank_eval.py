@@ -6,23 +6,21 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import json
-import pickle
 from collections import defaultdict
 
 from src.evaluation.retrieval_metrics import evaluate_run
 from src.retrieval.dense_retriever import load_dense_retriever
-from src.retrieval.hybrid_fusion import reciprocal_rank_fusion
+from src.reranking.cross_encoder_reranker import CrossEncoderReranker
 
 
-BM25_PATH = "data/processed/bm25_corpus.pkl"
 DENSE_PATH = "data/processed/dense_retriever.pkl"
 QUERIES_PATH = "data/eval/queries_1000_seed42.jsonl"
 QRELS_PATH = "data/eval/qrels_1000_seed42.jsonl"
-RESULTS_PATH = "data/eval/results/hybrid_rrf_medquad_1000_seed42.json"
+RESULTS_PATH = "data/eval/results/dense_rerank_medquad_1000_seed42.json"
 
-FIRST_STAGE_K = 50
+FIRST_STAGE_K = 20
 FINAL_TOP_K = 10
-RRF_K = 60
+RERANKER_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 
 def load_queries(path: str):
@@ -52,13 +50,11 @@ def load_qrels(path: str):
 
 
 def main():
-    with open(BM25_PATH, "rb") as f:
-        bm25 = pickle.load(f)
-
     dense = load_dense_retriever(DENSE_PATH)
+    reranker = CrossEncoderReranker(RERANKER_NAME)
 
     queries = load_queries(QUERIES_PATH)
-    print(f"Running hybrid RRF evaluation on {len(queries)} queries...")
+    print(f"Running dense+rerank evaluation on {len(queries)} queries...")
 
     qrels_binary, qrels_graded = load_qrels(QRELS_PATH)
 
@@ -70,17 +66,10 @@ def main():
         qid = item["qid"]
         query = item["query"]
 
-        bm25_results = bm25.search(query, top_k=FIRST_STAGE_K)
         dense_results = dense.search(query, top_k=FIRST_STAGE_K)
+        reranked = reranker.rerank(query, dense_results, top_k=FINAL_TOP_K)
 
-        fused_results = reciprocal_rank_fusion(
-            bm25_results=bm25_results,
-            dense_results=dense_results,
-            k=RRF_K,
-            top_k=FINAL_TOP_K,
-        )
-
-        run[qid] = [r["chunk_id"] for r in fused_results]
+        run[qid] = [r["chunk_id"] for r in reranked]
 
     metrics = evaluate_run(
         run=run,
@@ -89,18 +78,18 @@ def main():
         ks=[1, 3, 5, 10],
     )
 
-    print("\nHybrid RRF metrics:")
+    print("\nDense + Cross-Encoder Reranker metrics:")
     for k, v in metrics.items():
         print(f"{k}: {v:.4f}")
 
     output = {
-        "model": "hybrid_rrf",
+        "model": "dense_rerank",
+        "first_stage": "dense",
+        "reranker": RERANKER_NAME,
         "dataset": "MedQuAD",
         "eval_split": "queries_1000_seed42",
         "num_queries": len(queries),
-        "bm25_first_stage_k": FIRST_STAGE_K,
-        "dense_first_stage_k": FIRST_STAGE_K,
-        "rrf_k": RRF_K,
+        "first_stage_k": FIRST_STAGE_K,
         "final_top_k": FINAL_TOP_K,
         "metrics": metrics,
     }

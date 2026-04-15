@@ -1,0 +1,21 @@
+{
+  "model": "dense_rerank",
+  "first_stage": "dense",
+  "reranker": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+  "dataset": "MedQuAD",
+  "eval_split": "queries_1000_seed42",
+  "num_queries": 1000,
+  "first_stage_k": 20,
+  "final_top_k": 10,
+  "metrics": {
+    "Recall@1": 0.44690441028480343,
+    "Recall@3": 0.5997404995373731,
+    "Recall@5": 0.6377708211535977,
+    "Recall@10": 0.6833720713635392,
+    "MRR": 0.7132767733649475,
+    "NDCG@1": 0.6141078838174274,
+    "NDCG@3": 0.6206627320153735,
+    "NDCG@5": 0.625705934403777,
+    "NDCG@10": 0.6316900351732916
+  }
+}

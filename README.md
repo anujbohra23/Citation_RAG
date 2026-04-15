@@ -1,4 +1,3 @@
-````markdown
 # CS535 Hybrid RAG Starter Project
 
 A runnable implementation for **Hybrid Retrieval-Augmented Generation with Cross-Encoder Reranking** for **medical question answering** using **MedQuAD**.
@@ -20,6 +19,8 @@ This repo follows the staged build plan:
 - Paragraph-aware chunking with overlap fallback for oversized paragraphs
 - BM25 sparse retrieval baseline using `rank_bm25`
 - Dense retrieval baseline using `sentence-transformers/all-MiniLM-L6-v2`
+- Hybrid retrieval baseline using Reciprocal Rank Fusion (RRF)
+- Cross-encoder reranking using `cross-encoder/ms-marco-MiniLM-L-6-v2`
 - Retrieval metrics: Recall@K, MRR, NDCG@K
 - Scripts to:
   - build chunks
@@ -27,6 +28,8 @@ This repo follows the staged build plan:
   - build dense retrieval artifact
   - run BM25 evaluation
   - run dense evaluation
+  - run hybrid evaluation
+  - run rerank evaluation
   - inspect search results
 - Frozen 1,000-query evaluation split for reproducible comparison
 
@@ -39,13 +42,14 @@ This repo follows the staged build plan:
 - chunking pipeline
 - BM25 baseline
 - dense retrieval baseline
+- hybrid RRF evaluation
+- dense + reranker evaluation
 - reproducible evaluation split
 
 ### Next
-- Hybrid fusion with Reciprocal Rank Fusion (RRF)
-- Cross-encoder reranking
 - Grounded answer generation with citations
 - Faithfulness evaluation
+- Demo integration and polish
 
 ---
 
@@ -113,6 +117,18 @@ python -m scripts.build_dense_index
 python -m scripts.run_dense_eval
 ```
 
+### 7. Evaluate hybrid retrieval
+
+```bash
+python -m scripts.run_hybrid_eval
+```
+
+### 8. Evaluate dense + reranker
+
+```bash
+python -m scripts.run_rerank_eval
+```
+
 ---
 
 ## Search examples
@@ -127,6 +143,18 @@ python -m scripts.search_bm25 --query "What causes asthma?" --top_k 5
 
 ```bash
 python -m scripts.search_dense --query "What causes asthma?" --top_k 5
+```
+
+### Hybrid search
+
+```bash
+python -m scripts.search_hybrid --query "What causes asthma?" --top_k 5
+```
+
+### Reranked search
+
+```bash
+python -m scripts.search_rerank --query "What causes asthma?" --top_k 5
 ```
 
 ---
@@ -192,7 +220,7 @@ This benchmark setup is now fixed for fair comparison across:
 * BM25
 * Dense retrieval
 * Hybrid retrieval
-* Reranking
+* Dense + reranking
 
 ---
 
@@ -228,48 +256,81 @@ Encoder: `sentence-transformers/all-MiniLM-L6-v2`
 | NDCG@5    | 0.5584 |
 | NDCG@10   | 0.5760 |
 
-### BM25 vs Dense comparison
+### Hybrid RRF baseline
 
-| Metric    |   BM25 |  Dense | Better |
-| --------- | -----: | -----: | ------ |
-| Recall@1  | 0.2000 | 0.3725 | Dense  |
-| Recall@3  | 0.5272 | 0.5388 | Dense  |
-| Recall@5  | 0.6528 | 0.6006 | BM25   |
-| Recall@10 | 0.7711 | 0.6695 | BM25   |
-| MRR       | 0.4022 | 0.6322 | Dense  |
-| NDCG@1    | 0.2123 | 0.5176 | Dense  |
-| NDCG@3    | 0.3942 | 0.5397 | Dense  |
-| NDCG@5    | 0.4480 | 0.5584 | Dense  |
-| NDCG@10   | 0.4890 | 0.5760 | Dense  |
+| Metric    | Hybrid RRF |
+| --------- | ---------: |
+| Recall@1  |     0.2997 |
+| Recall@3  |     0.5086 |
+| Recall@5  |     0.5866 |
+| Recall@10 |     0.6730 |
+| MRR       |     0.5786 |
+| NDCG@1    |     0.4284 |
+| NDCG@3    |     0.4908 |
+| NDCG@5    |     0.5167 |
+| NDCG@10   |     0.5388 |
+
+### Dense + Cross-Encoder Reranker
+
+First stage: Dense top-20
+Reranker: `cross-encoder/ms-marco-MiniLM-L-6-v2`
+
+| Metric    | Dense + Rerank |
+| --------- | -------------: |
+| Recall@1  |         0.4469 |
+| Recall@3  |         0.5997 |
+| Recall@5  |         0.6378 |
+| Recall@10 |         0.6834 |
+| MRR       |         0.7133 |
+| NDCG@1    |         0.6141 |
+| NDCG@3    |         0.6207 |
+| NDCG@5    |         0.6257 |
+| NDCG@10   |         0.6317 |
+
+### Full comparison
+
+| Metric    |   BM25 |  Dense | Hybrid RRF | Dense + Rerank | Best           |
+| --------- | -----: | -----: | ---------: | -------------: | -------------- |
+| Recall@1  | 0.2000 | 0.3725 |     0.2997 |         0.4469 | Dense + Rerank |
+| Recall@3  | 0.5272 | 0.5388 |     0.5086 |         0.5997 | Dense + Rerank |
+| Recall@5  | 0.6528 | 0.6006 |     0.5866 |         0.6378 | BM25           |
+| Recall@10 | 0.7711 | 0.6695 |     0.6730 |         0.6834 | BM25           |
+| MRR       | 0.4022 | 0.6322 |     0.5786 |         0.7133 | Dense + Rerank |
+| NDCG@1    | 0.2123 | 0.5176 |     0.4284 |         0.6141 | Dense + Rerank |
+| NDCG@3    | 0.3942 | 0.5397 |     0.4908 |         0.6207 | Dense + Rerank |
+| NDCG@5    | 0.4480 | 0.5584 |     0.5167 |         0.6257 | Dense + Rerank |
+| NDCG@10   | 0.4890 | 0.5760 |     0.5388 |         0.6317 | Dense + Rerank |
 
 ---
 
 ## Key takeaways
 
-* **BM25** provides stronger broader recall at larger cutoffs, especially `Recall@5` and `Recall@10`
-* **Dense retrieval** gives much stronger top-rank quality, with large gains in:
+* **BM25** provides the strongest broad recall at larger cutoffs, especially `Recall@5` and `Recall@10`
+* **Dense retrieval** substantially improves semantic ranking quality over BM25
+* **Hybrid RRF** did not outperform the dense retriever on this frozen MedQuAD benchmark
+* **Dense + Cross-Encoder Reranker** is the strongest overall retrieval pipeline so far, with the best:
 
   * `Recall@1`
+  * `Recall@3`
   * `MRR`
-  * `NDCG`
-* This complementary behavior motivates the next stage:
+  * `NDCG@1/3/5/10`
 
-  * **Hybrid fusion with RRF**
-  * **Cross-encoder reranking**
+This suggests that semantic retrieval followed by precision reranking is the best setup for top-ranked evidence selection in this project.
 
 ---
 
 ## Example observation
 
-For the query **"What causes asthma?"**, the dense retriever returned a highly relevant top result directly explaining that asthma arises from interacting genetic and environmental factors, followed by multiple semantically related answers. This suggests that dense retrieval is especially strong for medical semantic matching.
+For the query **"What causes asthma?"**, the dense retriever returned semantically strong candidates, and the cross-encoder reranker further improved the top-ranked ordering by prioritizing answer passages that more directly matched the query intent.
 
 ---
 
 ## Suggested next milestone
 
-* Implement hybrid retrieval with Reciprocal Rank Fusion (RRF)
-* Compare hybrid vs BM25 vs dense on the same frozen split
-* Add cross-encoder reranking on the hybrid top-k candidate set
+* Implement grounded answer generation using the reranked top evidence chunks
+* Add citation formatting in generated answers
+* Add refusal behavior for insufficient evidence
+* Evaluate claim-level faithfulness and citation correctness
 
 ---
 
@@ -279,6 +340,7 @@ For the query **"What causes asthma?"**, the dense retriever returned a highly r
 * Dense retrieval currently uses a NumPy-based similarity search fallback for stability on macOS
 * FAISS can be reintroduced later if the environment supports it cleanly
 * Keep the corpus, chunks, eval split, and qrels fixed while comparing retrieval methods
+* On this benchmark, **Dense + Rerank** should be treated as the primary retrieval stack for the generation stage
 
 ```
 ```
