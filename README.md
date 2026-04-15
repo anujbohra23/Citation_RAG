@@ -1,346 +1,214 @@
-# CS535 Hybrid RAG Starter Project
+````markdown
+# CS535 Medical QA with Hybrid RAG
 
-A runnable implementation for **Hybrid Retrieval-Augmented Generation with Cross-Encoder Reranking** for **medical question answering** using **MedQuAD**.
+An end-to-end medical question answering system built on **MedQuAD** with:
 
-This repo follows the staged build plan:
+- **BM25** sparse retrieval
+- **Dense retrieval** using `sentence-transformers/all-MiniLM-L6-v2`
+- **Hybrid retrieval** with Reciprocal Rank Fusion (RRF)
+- **Cross-encoder reranking** using `cross-encoder/ms-marco-MiniLM-L-6-v2`
+- **Grounded answer generation** with citations
 
-1. **Weeks 5-6:** corpus onboarding, chunking, BM25 baseline, retrieval evaluation
-2. **Weeks 7-8:** dense retrieval with sentence-transformers
-3. **Weeks 9-10:** hybrid fusion (RRF) + cross-encoder reranking
-4. **Weeks 11-12:** grounded answer generation with citations
-5. **Weeks 13-14:** faithfulness evaluation and demo polish
+The current best pipeline is:
 
----
-
-## What's implemented now
-
-- MedQuAD ingestion pipeline
-- Conservative text cleaning for medical QA data
-- Paragraph-aware chunking with overlap fallback for oversized paragraphs
-- BM25 sparse retrieval baseline using `rank_bm25`
-- Dense retrieval baseline using `sentence-transformers/all-MiniLM-L6-v2`
-- Hybrid retrieval baseline using Reciprocal Rank Fusion (RRF)
-- Cross-encoder reranking using `cross-encoder/ms-marco-MiniLM-L-6-v2`
-- Retrieval metrics: Recall@K, MRR, NDCG@K
-- Scripts to:
-  - build chunks
-  - build BM25 index
-  - build dense retrieval artifact
-  - run BM25 evaluation
-  - run dense evaluation
-  - run hybrid evaluation
-  - run rerank evaluation
-  - inspect search results
-- Frozen 1,000-query evaluation split for reproducible comparison
+**Dense Retriever → Cross-Encoder Reranker → Top-3 Evidence Chunks → Grounded Answer**
 
 ---
 
-## Project status
+## Features
 
-### Completed
-- MedQuAD corpus onboarding
-- chunking pipeline
-- BM25 baseline
-- dense retrieval baseline
-- hybrid RRF evaluation
-- dense + reranker evaluation
-- reproducible evaluation split
-
-### Next
-- Grounded answer generation with citations
-- Faithfulness evaluation
-- Demo integration and polish
+- MedQuAD ingestion and preprocessing
+- Paragraph-aware chunking
+- Reproducible 1,000-query evaluation split
+- BM25, dense, hybrid, and reranked retrieval benchmarks
+- Grounded QA demo with citations
+- Streamlit demo interface
 
 ---
 
-## Quickstart
+## Setup
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-pip install sentence-transformers faiss-cpu
+pip install sentence-transformers faiss-cpu transformers torch sentencepiece streamlit
 ````
 
 ---
 
 ## Dataset
 
-This project currently uses **MedQuAD**.
-
-Clone the dataset into the project like this:
+Clone MedQuAD into the project:
 
 ```bash
 git clone https://github.com/abachaa/MedQuAD.git data/raw/medquad_repo
 ```
 
-The raw dataset repo is treated as local data and should not be committed into this repository.
+Do not commit the raw dataset repo into this repository.
 
 ---
 
-## Build pipeline
+## Run the pipeline
 
-### 1. Build chunks
+### Build data and indexes
 
 ```bash
 python -m scripts.build_chunks
-```
-
-### 2. Build evaluation files
-
-```bash
 python -m scripts.build_medquad_eval
 python -m scripts.freeze_eval_subset
-```
-
-### 3. Build BM25 index
-
-```bash
 python -m scripts.build_bm25
-```
-
-### 4. Evaluate BM25
-
-```bash
-python -m scripts.run_bm25_eval
-```
-
-### 5. Build dense retrieval artifact
-
-```bash
 python -m scripts.build_dense_index
 ```
 
-### 6. Evaluate dense retrieval
+### Run retrieval evaluations
 
 ```bash
+python -m scripts.run_bm25_eval
 python -m scripts.run_dense_eval
-```
-
-### 7. Evaluate hybrid retrieval
-
-```bash
 python -m scripts.run_hybrid_eval
-```
-
-### 8. Evaluate dense + reranker
-
-```bash
 python -m scripts.run_rerank_eval
 ```
 
----
-
-## Search examples
-
-### BM25 search
+### Run search examples
 
 ```bash
 python -m scripts.search_bm25 --query "What causes asthma?" --top_k 5
-```
-
-### Dense search
-
-```bash
 python -m scripts.search_dense --query "What causes asthma?" --top_k 5
-```
-
-### Hybrid search
-
-```bash
 python -m scripts.search_hybrid --query "What causes asthma?" --top_k 5
-```
-
-### Reranked search
-
-```bash
 python -m scripts.search_rerank --query "What causes asthma?" --top_k 5
 ```
 
+### Run grounded QA demo
+
+```bash
+python -m scripts.run_answer_demo --query "What causes asthma?" --show_evidence
+```
+
+### Run Streamlit app
+
+```bash
+python -m streamlit run src/demo/streamlit_app.py
+```
+
 ---
 
-## Data layout
-
-### Raw data
+## Data
 
 ```text
 data/raw/medquad_repo/
-```
-
-### Chunked corpus
-
-```text
 data/interim/chunks.jsonl
-```
-
-### Queries
-
-```text
-data/interim/queries.jsonl
 data/eval/queries_1000_seed42.jsonl
-```
-
-Example:
-
-```json
-{"qid": "3_GHR_QA_0", "query": "What is (are) keratoderma with woolly hair ?"}
-```
-
-### Qrels
-
-```text
-data/eval/qrels.jsonl
 data/eval/qrels_1000_seed42.jsonl
-```
-
-Example:
-
-```json
-{"qid": "3_GHR_QA_0", "chunk_id": "3_GHR_QA_0_chunk_0", "relevance": 2}
+data/eval/results/
 ```
 
 ---
 
-## Locked evaluation setup
+## Evaluation setup
 
 * **Dataset:** MedQuAD
-* **Original QA documents loaded:** 16,423
+* **Documents loaded:** 16,423
 * **Chunks created:** 21,646
-* **Frozen evaluation split:** 1,000 queries
+* **Evaluation split:** 1,000 queries
 * **Sampling:** fixed subset with `seed = 42`
-* **Chunking parameters:**
 
-  * `target_words = 220`
-  * `overlap_words = 40`
-  * `min_chunk_words = 40`
-  * `max_chunk_words = 300`
+### Chunking parameters
 
-This benchmark setup is now fixed for fair comparison across:
-
-* BM25
-* Dense retrieval
-* Hybrid retrieval
-* Dense + reranking
+* `target_words = 220`
+* `overlap_words = 40`
+* `min_chunk_words = 40`
+* `max_chunk_words = 300`
 
 ---
 
-## Results
+## Retrieval results
 
-### BM25 baseline
+| Metric    |       BM25 |  Dense | Hybrid RRF | Dense + Rerank |
+| --------- | ---------: | -----: | ---------: | -------------: |
+| Recall@1  |     0.2000 | 0.3725 |     0.2997 |     **0.4469** |
+| Recall@3  |     0.5272 | 0.5388 |     0.5086 |     **0.5997** |
+| Recall@5  | **0.6528** | 0.6006 |     0.5866 |         0.6378 |
+| Recall@10 | **0.7711** | 0.6695 |     0.6730 |         0.6834 |
+| MRR       |     0.4022 | 0.6322 |     0.5786 |     **0.7133** |
+| NDCG@1    |     0.2123 | 0.5176 |     0.4284 |     **0.6141** |
+| NDCG@3    |     0.3942 | 0.5397 |     0.4908 |     **0.6207** |
+| NDCG@5    |     0.4480 | 0.5584 |     0.5167 |     **0.6257** |
+| NDCG@10   |     0.4890 | 0.5760 |     0.5388 |     **0.6317** |
 
-| Metric    |   BM25 |
-| --------- | -----: |
-| Recall@1  | 0.2000 |
-| Recall@3  | 0.5272 |
-| Recall@5  | 0.6528 |
-| Recall@10 | 0.7711 |
-| MRR       | 0.4022 |
-| NDCG@1    | 0.2123 |
-| NDCG@3    | 0.3942 |
-| NDCG@5    | 0.4480 |
-| NDCG@10   | 0.4890 |
+### Summary
 
-### Dense retrieval baseline
-
-Encoder: `sentence-transformers/all-MiniLM-L6-v2`
-
-| Metric    |  Dense |
-| --------- | -----: |
-| Recall@1  | 0.3725 |
-| Recall@3  | 0.5388 |
-| Recall@5  | 0.6006 |
-| Recall@10 | 0.6695 |
-| MRR       | 0.6322 |
-| NDCG@1    | 0.5176 |
-| NDCG@3    | 0.5397 |
-| NDCG@5    | 0.5584 |
-| NDCG@10   | 0.5760 |
-
-### Hybrid RRF baseline
-
-| Metric    | Hybrid RRF |
-| --------- | ---------: |
-| Recall@1  |     0.2997 |
-| Recall@3  |     0.5086 |
-| Recall@5  |     0.5866 |
-| Recall@10 |     0.6730 |
-| MRR       |     0.5786 |
-| NDCG@1    |     0.4284 |
-| NDCG@3    |     0.4908 |
-| NDCG@5    |     0.5167 |
-| NDCG@10   |     0.5388 |
-
-### Dense + Cross-Encoder Reranker
-
-First stage: Dense top-20
-Reranker: `cross-encoder/ms-marco-MiniLM-L-6-v2`
-
-| Metric    | Dense + Rerank |
-| --------- | -------------: |
-| Recall@1  |         0.4469 |
-| Recall@3  |         0.5997 |
-| Recall@5  |         0.6378 |
-| Recall@10 |         0.6834 |
-| MRR       |         0.7133 |
-| NDCG@1    |         0.6141 |
-| NDCG@3    |         0.6207 |
-| NDCG@5    |         0.6257 |
-| NDCG@10   |         0.6317 |
-
-### Full comparison
-
-| Metric    |   BM25 |  Dense | Hybrid RRF | Dense + Rerank | Best           |
-| --------- | -----: | -----: | ---------: | -------------: | -------------- |
-| Recall@1  | 0.2000 | 0.3725 |     0.2997 |         0.4469 | Dense + Rerank |
-| Recall@3  | 0.5272 | 0.5388 |     0.5086 |         0.5997 | Dense + Rerank |
-| Recall@5  | 0.6528 | 0.6006 |     0.5866 |         0.6378 | BM25           |
-| Recall@10 | 0.7711 | 0.6695 |     0.6730 |         0.6834 | BM25           |
-| MRR       | 0.4022 | 0.6322 |     0.5786 |         0.7133 | Dense + Rerank |
-| NDCG@1    | 0.2123 | 0.5176 |     0.4284 |         0.6141 | Dense + Rerank |
-| NDCG@3    | 0.3942 | 0.5397 |     0.4908 |         0.6207 | Dense + Rerank |
-| NDCG@5    | 0.4480 | 0.5584 |     0.5167 |         0.6257 | Dense + Rerank |
-| NDCG@10   | 0.4890 | 0.5760 |     0.5388 |         0.6317 | Dense + Rerank |
+* **BM25** gives the best broad recall at larger cutoffs
+* **Dense retrieval** improves semantic ranking quality
+* **Hybrid RRF** did not outperform dense on this benchmark
+* **Dense + reranker** is the strongest overall retrieval setup
 
 ---
 
-## Key takeaways
+## Grounded answer generation
 
-* **BM25** provides the strongest broad recall at larger cutoffs, especially `Recall@5` and `Recall@10`
-* **Dense retrieval** substantially improves semantic ranking quality over BM25
-* **Hybrid RRF** did not outperform the dense retriever on this frozen MedQuAD benchmark
-* **Dense + Cross-Encoder Reranker** is the strongest overall retrieval pipeline so far, with the best:
+The current generation module uses:
 
-  * `Recall@1`
-  * `Recall@3`
-  * `MRR`
-  * `NDCG@1/3/5/10`
+1. Dense retrieval
+2. Cross-encoder reranking
+3. Top-3 evidence chunk selection
+4. Deterministic grounded answer composition with citations
 
-This suggests that semantic retrieval followed by precision reranking is the best setup for top-ranked evidence selection in this project.
+### Example
+
+**Query:**
+`What causes asthma?`
+
+**Answer:**
+`The exact cause is not known, but the retrieved evidence indicates that it likely results from a combination of genetic and environmental factors, often early in life [3]. The evidence mentions examples such as inherited tendency toward allergies, family history, certain childhood respiratory infections, and exposure to allergens or irritants like tobacco smoke [2][3].`
+
+This design is intentionally deterministic to improve grounding, citation consistency, and local reproducibility.
 
 ---
 
-## Example observation
+## Demo
 
-For the query **"What causes asthma?"**, the dense retriever returned semantically strong candidates, and the cross-encoder reranker further improved the top-ranked ordering by prioritizing answer passages that more directly matched the query intent.
+The Streamlit app provides:
+
+* question input
+* grounded answer
+* cited sources
+* evidence inspection
+
+Run it with:
+
+```bash
+python -m streamlit run src/demo/streamlit_app.py
+```
 
 ---
 
-## Suggested next milestone
+## Project structure
 
-* Implement grounded answer generation using the reranked top evidence chunks
-* Add citation formatting in generated answers
-* Add refusal behavior for insufficient evidence
-* Evaluate claim-level faithfulness and citation correctness
+```text
+src/
+├── chunking/
+├── core/
+├── demo/
+├── evaluation/
+├── generation/
+├── indexing/
+├── ingestion/
+├── reranking/
+└── retrieval/
+
+scripts/
+data/
+```
 
 ---
 
 ## Notes
 
-* The baseline is intentionally framework-light
-* Dense retrieval currently uses a NumPy-based similarity search fallback for stability on macOS
+* The benchmark setup is fixed for fair comparison
+* Dense retrieval currently uses a NumPy similarity fallback for stability on macOS
 * FAISS can be reintroduced later if the environment supports it cleanly
-* Keep the corpus, chunks, eval split, and qrels fixed while comparing retrieval methods
-* On this benchmark, **Dense + Rerank** should be treated as the primary retrieval stack for the generation stage
+* The primary retrieval stack for generation is **Dense + Rerank**
 
 ```
 ```

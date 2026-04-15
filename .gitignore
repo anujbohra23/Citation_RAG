@@ -5,3 +5,4 @@ __pycache__/
 .ipynb_checkpoints/
 *.pkl
 data/processed/faiss_index/
+.env
