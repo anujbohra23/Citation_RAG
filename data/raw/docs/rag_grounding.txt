@@ -1,0 +1,3 @@
+Retrieval-augmented generation uses retrieved evidence to ground the output of a language model. The answer generator should rely only on supported evidence and should cite the chunks that justify each answer.
+
+Grounded generation can reduce hallucination, but retrieval quality still matters. If the retriever misses the right evidence, the generator may fail to answer, refuse, or produce unsupported claims. That is why retrieval evaluation and answer faithfulness evaluation both matter in a RAG project.

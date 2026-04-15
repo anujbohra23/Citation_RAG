@@ -1,0 +1,5 @@
+Hybrid retrieval combines sparse and dense retrieval to improve evidence coverage. Sparse retrieval is usually strong on exact lexical matching, while dense retrieval is better at semantic similarity and paraphrased questions.
+
+A common fusion strategy is Reciprocal Rank Fusion, or RRF. Instead of combining raw scores from systems with different score scales, RRF combines ranked lists and gives higher weight to items appearing near the top of each list.
+
+Hybrid systems often improve Recall@K because they retrieve relevant evidence that may be missed by either sparse or dense retrieval alone. However, the merged candidate set can contain extra noise, so reranking is commonly applied afterward.

@@ -1,0 +1,5 @@
+BM25 is a classic sparse retrieval function used in information retrieval. It relies on lexical overlap between the query and a document or chunk. One reason BM25 remains strong for technical question answering is that exact identifiers, package names, flags, API names, and code-adjacent terminology often matter a lot.
+
+A practical strength of BM25 is document length normalization. Long chunks naturally contain more terms, but BM25 reduces unfair advantages for long passages by normalizing term frequency with respect to document length. This makes it useful for corpora where chunks can vary in size.
+
+BM25 is often a strong baseline before adding dense retrieval. In technical corpora, it frequently performs well on questions containing exact strings such as class names, error messages, command flags, or library names.

@@ -1,0 +1,5 @@
+Cross-encoder reranking jointly scores a query and a candidate chunk. Unlike a bi-encoder, it allows rich token-level interactions between the query and the candidate text. That usually improves top-k precision and metrics such as MRR and NDCG.
+
+The main downside is cost. Cross-encoders are much slower than first-stage retrieval, so a common design is to rerank only the top 20 to 50 candidates from BM25, dense retrieval, or a hybrid fusion stage.
+
+In a technical QA pipeline, reranking is useful when many retrieved chunks mention similar keywords but only a few truly answer the question.

@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cs535-hybrid-rag"
+version = "0.1.0"
+description = "Starter project for hybrid RAG with BM25, dense retrieval, RRF, reranking, and grounded generation."
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+where = ["src"]
