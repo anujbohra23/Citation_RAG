@@ -1,0 +1,19 @@
+{
+  "model": "dense",
+  "encoder": "sentence-transformers/all-MiniLM-L6-v2",
+  "dataset": "MedQuAD",
+  "eval_split": "queries_1000_seed42",
+  "num_queries": 1000,
+  "num_chunks": 21646,
+  "metrics": {
+    "Recall@1": 0.3725367151053864,
+    "Recall@3": 0.5387865992421862,
+    "Recall@5": 0.6005812512288758,
+    "Recall@10": 0.6695245767726172,
+    "MRR": 0.6322400052690513,
+    "NDCG@1": 0.5176348547717843,
+    "NDCG@3": 0.5396682987640982,
+    "NDCG@5": 0.5584263755917702,
+    "NDCG@10": 0.5759810929066754
+  }
+}
